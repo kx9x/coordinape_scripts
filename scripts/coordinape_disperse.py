@@ -27,7 +27,7 @@ class CoordinapeGroup(Enum):
 LEFTOVER_DICT = {CoordinapeGroup.COMMUNITY: {2: 6902}}
 DEFAULT_USD_REWARD_DICT = {
     CoordinapeGroup.COMMUNITY: {1: 40000, 2: 40000, 3: 40000},
-    CoordinapeGroup.YSTRATEGIST: {3: 40000},
+    CoordinapeGroup.YSTRATEGIST: {1: 40000, 2: 40000},
 }
 
 
@@ -57,6 +57,10 @@ def disperse(group, epoch, deposit_yfi, safe="ychad.eth"):
         if int(contributor["received"]) > 0
     ]
     num_contributors = len(contributors_this_epoch)
+
+    assert (
+        num_contributors > 0
+    ), "{group.name}'s epoch #{epoch} does not have any contributors with votes received..."
 
     total_votes = 0
     for contributor in contributors_this_epoch:
@@ -164,7 +168,7 @@ def disperse_yearn_community_epoch_three():
 
 
 def disperse_strategist():
-    disperse(CoordinapeGroup.YSTRATEGIST, 3, False, "brain.ychad.eth")
+    disperse(CoordinapeGroup.YSTRATEGIST, 2, False, "brain.ychad.eth")
 
 
 if __name__ == "__main__":
