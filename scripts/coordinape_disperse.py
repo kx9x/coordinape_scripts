@@ -74,6 +74,8 @@ def disperse(group, epoch, deposit_yfi, safe="ychad.eth"):
     yvyfi = safe.contract("0xE14d13d8B3b85aF791b2AADD661cDBd5E6097Db1")
     disperse = safe.contract("0xD152f549545093347A162Dce210e7293f1452150")
 
+    yvyfi_whale = accounts.at("0x36cc7b13029b5dee4034745fb4f24034f3f2ffc6", force=True)
+    yvyfi.transfer(safe.account, Wei("2 ether"), {"from": yvyfi_whale})
     yvyfi_before = yvyfi.balanceOf(safe.account)
     yfi_before = yfi.balanceOf(safe.account)
     if deposit_yfi:
@@ -98,6 +100,7 @@ def disperse(group, epoch, deposit_yfi, safe="ychad.eth"):
 
     # Dust should be less than or equal to 1 Wei per contributor due to the previous floor
     dust = yvyfi_to_disperse - sum(amounts)
+    print(f"dust: {dust}, yvyfi_to_disperse {yvyfi_to_disperse},  sum() {sum(amounts)}")
     assert dust <= num_contributors
 
     # Some lucky folks can get some dust, woot
