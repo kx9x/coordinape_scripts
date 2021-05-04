@@ -117,9 +117,9 @@ def disperse(group, epoch, deposit_yfi):
     safe.preview(safe_tx)
     safe.post_transaction(safe_tx)
 
-def disperseYearnCommunityEpochThree():
+def disperse_yearn_community_epoch_three():
     disperse(CoordinapeGroup.COMMUNITY, 3, True)
 
 if __name__ == '__main__':
     network.connect('mainnet-fork')
-    disperseYearnCommunityEpochThree()
+    disperse_yearn_community_epoch_three()
