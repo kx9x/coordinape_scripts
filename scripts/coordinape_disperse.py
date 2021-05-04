@@ -140,10 +140,21 @@ def disperse(group, epoch, deposit_yfi, safe="ychad.eth"):
             contributor["address"][:6],
             contributor["received"],
             amount / yfi_decimal_multiplicand,
-            amount / yfi_decimal_multiplicand * yfi_in_usd * pricePerShare,
+            "${:0.2f}".format(amount / yfi_decimal_multiplicand * yfi_in_usd * pricePerShare),
         ]
         for contributor, amount in zip(contributors_this_epoch, amounts)
     ]
+
+    l.append(
+        [
+            "TOTAL", 
+            "------", 
+            total_votes, 
+            sum(amounts) / yfi_decimal_multiplicand, 
+            "${:0.2f}".format(sum(amounts) / yfi_decimal_multiplicand * yfi_in_usd * pricePerShare)
+        ]
+    )
+    
     table = tabulate(
         l,
         headers=["Name", "Address", "Received Votes", "Amount yvYFI", "Amount USD"],
