@@ -20,13 +20,11 @@ class CoordinapeGroup(Enum):
     CREAM = 6
     GITCOIN = 7
 
-# For epoch 3 in the yearn community, we need to 
-# add the leftover USDC from epoch 2.
-#
+# For epoch 3 in the yearn community, we need to add the leftover USDC from epoch 2.
+# Below we can see that 33,098 was awarded, meaning 40,000 - 33,098 = $6902 is leftover:
 # https://etherscan.io/tx/0xf401d432dcaaea39e1b593379d3d63dcdc82f5f694d83b098bb6110eaa19bbde
-# Here we can see that 33,098 was awarded, meaning 40,000 - 33,098 = $6902 is leftover
-
 LEFTOVER_DICT = { CoordinapeGroup.COMMUNITY: {2: 6902} }
+
 DEFAULT_USD_REWARD_DICT = { CoordinapeGroup.COMMUNITY: {1: 40000, 2: 40000, 3: 40000}}
 
 def contributors_from_epoch(group, epoch):
