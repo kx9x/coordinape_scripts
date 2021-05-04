@@ -9,7 +9,6 @@ from enum import Enum
 from tabulate import tabulate
 
 EPOCH_RESULTS_ENDPOINT_FORMAT = 'https://coordinape.me/api/{0}/csv?epoch={1}'
-DEFAULT_USD_REWARD_PER_EPOCH = 40000
 
 class CoordinapeGroup(Enum):
     COMMUNITY = 1
