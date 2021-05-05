@@ -230,7 +230,7 @@ def disperse(group, epoch, safe="ychad.eth", funding_method=FundingMethod.DEPOSI
 
 
 def disperse_yearn_community_epoch_3():
-    # Exclude Oni, redistribute his share
+    # Exclude Orb, redistribute his share
     # Transfer yvyfi from treasury
     disperse(CoordinapeGroup.COMMUNITY, 3, "ychad.eth", FundingMethod.TRANSFER_YVYFI_FROM_TREASURY, ["0x710295b5f326c2e47e6dd2e7f6b5b0f7c5ac2f24"], ExclusionMethod.REDISTRIBUTE_SHARE)
 
