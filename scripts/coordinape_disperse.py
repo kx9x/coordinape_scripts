@@ -111,7 +111,7 @@ def disperse(group, epoch, deposit_yfi, safe="ychad.eth"):
     assert sum(amounts) == yvyfi_to_disperse
     assert (
         yfi_allocated
-        == (yvyfi_to_disperse * yvyfi.pricePerShare()) / yfi_decimal_multiplicand
+        == yvyfi_to_disperse * (yvyfi.totalAssets() / yvyfi.totalSupply())
     )
 
     yvyfi.approve(disperse, sum(amounts))
