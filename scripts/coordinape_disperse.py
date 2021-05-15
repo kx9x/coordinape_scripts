@@ -5,42 +5,11 @@ from fractions import Fraction
 from ape_safe import ApeSafe
 from brownie import *
 import math
-from enum import Enum
 from tabulate import tabulate
 from pytest import approx
-
-EPOCH_RESULTS_ENDPOINT_FORMAT = "https://coordinape.me/api/{0}/csv?epoch={1}"
-
-
-class CoordinapeGroup(Enum):
-    COMMUNITY = 1
-    YSTRATEGIST = 2
-    _003 = 3
-    SUSHI = 4
-    COORDINAPETESTING = 5
-    CREAM = 6
-    GITCOIN = 7
-
-
-class ExclusionMethod(Enum):
-    REDISTRIBUTE_SHARE = 1  # An excluded person's share is redistributed to the pool
-    REMOVE_SHARE = 2  # An excluded person's share is removed from the pool of funds
-
-
-class FundingMethod(Enum):
-    DEPOSIT_YFI = 1
-    TRANSFER_YVYFI = 2
-    TRANSFER_YVYFI_FROM_TREASURY = 3
-
-
-# For epoch 3 in the yearn community, we need to add the leftover USDC from epoch 2.
-# Below we can see that 33,098 was awarded, meaning 40,000 - 33,098 = $6902 is leftover:
-# https://etherscan.io/tx/0xf401d432dcaaea39e1b593379d3d63dcdc82f5f694d83b098bb6110eaa19bbde
-LEFTOVER_DICT = {CoordinapeGroup.COMMUNITY: {2: 6902}}
-DEFAULT_USD_REWARD_DICT = {
-    CoordinapeGroup.COMMUNITY: {1: 40000, 2: 40000, 3: 40000},
-    CoordinapeGroup.YSTRATEGIST: {1: 40000, 2: 40000},
-}
+from constants import *
+from configuration import *
+from coordinape_enums import CoordinapeGroup, ExclusionMethod, FundingMethod
 
 
 def contributors_from_epoch(group, epoch):
@@ -50,10 +19,71 @@ def contributors_from_epoch(group, epoch):
     return list(csv.DictReader(buff))
 
 
+def get_reward_in_usd(group, epoch):
+    reward_in_usd = DEFAULT_USD_REWARD_DICT[group][epoch]
+    if group in LEFTOVER_DICT and epoch - 1 in LEFTOVER_DICT[group]:
+        reward_in_usd += LEFTOVER_DICT[group][epoch - 1]
+    return reward_in_usd
+
+
+def get_rewarded_contributors_this_epoch(contributors_this_epoch, exclusion_list, exclusion_type):
+    rewarded_contributors_this_epoch = [
+        contributor
+        for contributor in contributors_this_epoch
+        if int(contributor["received"]) > 0
+    ]
+
+    # REDISTRIBUTE_SHARE means we will treat excluded folks as never being in the pool
+    # and their share will be distributed to others based on the other votes
+    if exclusion_type == ExclusionMethod.REDISTRIBUTE_SHARE:
+        rewarded_contributors_this_epoch = [
+            contributor
+            for contributor in rewarded_contributors_this_epoch
+            if contributor["address"] not in exclusion_list
+        ]
+    
+    return rewarded_contributors_this_epoch
+
+
+def make_table(contributors_this_epoch, amounts, yfi_decimal_multiplicand, yfi_in_usd, price_per_share, total_votes):
+    l = [
+        [
+            contributor["name"],
+            contributor["address"][:6],
+            contributor["received"],
+            amount / yfi_decimal_multiplicand,
+            "${:0.2f}".format(
+                amount / yfi_decimal_multiplicand * yfi_in_usd * price_per_share
+            ),
+        ]
+        for contributor, amount in zip(contributors_this_epoch, amounts)
+    ]
+
+    l.append(
+        [
+            "TOTAL",
+            "------",
+            total_votes,
+            sum(amounts) / yfi_decimal_multiplicand,
+            "${:0.2f}".format(
+                sum(amounts) / yfi_decimal_multiplicand * yfi_in_usd * price_per_share
+            ),
+        ]
+    )
+
+    table = tabulate(
+        l,
+        headers=["Name", "Address", "Received Votes", "Amount yvYFI", "Amount USD"],
+        tablefmt="orgtbl",
+    )
+
+    return table
+
+
 def disperse(
     group,
     epoch,
-    safe="ychad.eth",
+    safe=YCHAD_ETH,
     funding_method=FundingMethod.DEPOSIT_YFI,
     exclusion_list=[],
     exclusion_type=ExclusionMethod.REDISTRIBUTE_SHARE,
@@ -66,44 +96,30 @@ def disperse(
     ), f"{group.name}'s epoch #{epoch} does not have a default usd reward entry"
 
     # Figure out the reward and handle leftovers from previous epoch
-    reward_in_usd = DEFAULT_USD_REWARD_DICT[group][epoch]
-    if group in LEFTOVER_DICT and epoch - 1 in LEFTOVER_DICT[group]:
-        reward_in_usd += LEFTOVER_DICT[group][epoch - 1]
+    reward_in_usd = get_reward_in_usd(group, epoch)
 
-    contributors_this_epoch = [
-        contributor
-        for contributor in contributors_from_epoch(group, epoch)
-        if int(contributor["received"]) > 0
-    ]
-
-    # REDISTRIBUTE_SHARE means we will treat excluded folks as never being in the pool
-    # and their share will be distributed to others based on the other votes
-    if exclusion_type == ExclusionMethod.REDISTRIBUTE_SHARE:
-        contributors_this_epoch = [
-            contributor
-            for contributor in contributors_this_epoch
-            if contributor["address"] not in exclusion_list
-        ]
+    contributors_this_epoch = contributors_from_epoch(group, epoch)
+    rewarded_contributors_this_epoch = get_rewarded_contributors_this_epoch(contributors_this_epoch, exclusion_list, exclusion_type)
 
     assert (
-        len(contributors_this_epoch) > 0
+        len(rewarded_contributors_this_epoch) > 0
     ), "{group.name}'s epoch #{epoch} does not have any contributors with votes received..."
 
     total_votes = 0
-    for contributor in contributors_this_epoch:
+    for contributor in rewarded_contributors_this_epoch:
         total_votes += int(contributor["received"])
 
     safe = ApeSafe(safe)
-    yfi = safe.contract("0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e")
-    yfi_usd_oracle = safe.contract("yfi-usd.data.eth")
+    yfi = safe.contract(YFI_ADDRESS)
+    yfi_usd_oracle = safe.contract(YFI_USD_ORACLE_ADDRESS)
 
     # Use price oracle to find how much YFI to allocate
     yfi_decimal_multiplicand = 10 ** yfi.decimals()
     yfi_in_usd = yfi_usd_oracle.latestAnswer() / 10 ** yfi_usd_oracle.decimals()
     yfi_allocated = (reward_in_usd / yfi_in_usd) * yfi_decimal_multiplicand
 
-    yvyfi = safe.contract("0xE14d13d8B3b85aF791b2AADD661cDBd5E6097Db1")
-    disperse = safe.contract("0xD152f549545093347A162Dce210e7293f1452150")
+    yvyfi = safe.contract(YEARN_VAULT_YFI_ADDRESS)
+    disperse = safe.contract(DISPERSE_APP_ADDRESS)
 
     yvyfi_before = yvyfi.balanceOf(safe.account)
     yfi_before = yfi.balanceOf(safe.account)
@@ -119,14 +135,12 @@ def disperse(
         percentage_yvyfi_buffer = (
             yvyfi.balanceOf(safe.account) - yvyfi_to_disperse
         ) / yvyfi_to_disperse
-        if percentage_yvyfi_buffer < 0.01:
-            print(
-                f"Warning! This TX could fail if yvYFI's pricePerShare changes before execution.\nThe yvyfi buffer is only {percentage_yvyfi_buffer}%\n"
-            )
-            print(f"Press enter to continue or Ctrl-C to exit")
-            input()
+
+        assert (
+            percentage_yvyfi_buffer > 0.01
+        ), f"This TX could fail if yvYFI's pricePerShare changes before execution.\nThe yvyfi buffer is only {percentage_yvyfi_buffer}%\n"
     elif funding_method == FundingMethod.TRANSFER_YVYFI_FROM_TREASURY:
-        treasury = safe.contract("0x93A62dA5a14C80f265DAbC077fCEE437B1a0Efde")
+        treasury = safe.contract(YEARN_TREASURY_ADDRESS)
         assert treasury.governance() == safe.account
         assert yvyfi.balanceOf(treasury) >= yvyfi_to_disperse
         treasury_yvyfi_before = yvyfi.balanceOf(treasury)
@@ -144,7 +158,7 @@ def disperse(
             yvyfi_to_disperse
             * (Fraction(contributor["received"]) / Fraction(total_votes))
         )
-        for contributor in contributors_this_epoch
+        for contributor in rewarded_contributors_this_epoch
     ]
 
     # REMOVE_SHARE means we will remove the excluded
@@ -155,11 +169,11 @@ def disperse(
         for contributor_address in exclusion_list:
             contributor_to_exclude = next(
                 x
-                for x in contributors_this_epoch
+                for x in rewarded_contributors_this_epoch
                 if x["address"] == contributor_address
             )
-            index = contributors_this_epoch.index(contributor_to_exclude)
-            del contributors_this_epoch[index]
+            index = rewarded_contributors_this_epoch.index(contributor_to_exclude)
+            del rewarded_contributors_this_epoch[index]
             yvyfi_removed_by_exclusion += amounts[index]
             yvyfi_to_disperse -= amounts[index]
             yfi_allocated -= amounts[index] * (
@@ -169,7 +183,7 @@ def disperse(
 
     # Dust should be less than or equal to 1 Wei per contributor due to the previous floor
     dust = yvyfi_to_disperse - sum(amounts)
-    assert dust <= len(contributors_this_epoch)
+    assert dust <= len(rewarded_contributors_this_epoch)
 
     # Some lucky folks can get some dust, woot
     for i in range(math.floor(dust)):
@@ -182,7 +196,7 @@ def disperse(
     )
 
     yvyfi.approve(disperse, sum(amounts))
-    recipients = [contributor["address"] for contributor in contributors_this_epoch]
+    recipients = [contributor["address"] for contributor in rewarded_contributors_this_epoch]
     recipients_yvfi_before = [yvyfi.balanceOf(recipient) for recipient in recipients]
 
     disperse.disperseToken(yvyfi, recipients, amounts)
@@ -213,39 +227,11 @@ def disperse(
         assert yvyfi.balanceOf(recipient) == yvyfi_before + amount
 
     # Print out a table
-    pricePerShare = yvyfi.pricePerShare() / yfi_decimal_multiplicand
-    l = [
-        [
-            contributor["name"],
-            contributor["address"][:6],
-            contributor["received"],
-            amount / yfi_decimal_multiplicand,
-            "${:0.2f}".format(
-                amount / yfi_decimal_multiplicand * yfi_in_usd * pricePerShare
-            ),
-        ]
-        for contributor, amount in zip(contributors_this_epoch, amounts)
-    ]
+    price_per_share = yvyfi.pricePerShare() / yfi_decimal_multiplicand
+    table = make_table(rewarded_contributors_this_epoch, amounts, yfi_decimal_multiplicand, yfi_in_usd, price_per_share, total_votes)
 
-    l.append(
-        [
-            "TOTAL",
-            "------",
-            total_votes,
-            sum(amounts) / yfi_decimal_multiplicand,
-            "${:0.2f}".format(
-                sum(amounts) / yfi_decimal_multiplicand * yfi_in_usd * pricePerShare
-            ),
-        ]
-    )
-
-    table = tabulate(
-        l,
-        headers=["Name", "Address", "Received Votes", "Amount yvYFI", "Amount USD"],
-        tablefmt="orgtbl",
-    )
     print(
-        f"{group.name} epoch #{epoch}\nDistributing ${reward_in_usd}\nYFI price ${yfi_in_usd}\nyvYFI price per share {pricePerShare}\n"
+        f"{group.name} epoch #{epoch}\nDistributing ${reward_in_usd}\nYFI price ${yfi_in_usd}\nyvYFI price per share {price_per_share}\n"
     )
     print(table)
 
@@ -260,7 +246,7 @@ def disperse_yearn_community_epoch_3():
     disperse(
         CoordinapeGroup.COMMUNITY,
         3,
-        "ychad.eth",
+        YCHAD_ETH,
         FundingMethod.TRANSFER_YVYFI_FROM_TREASURY,
         ["0x710295b5f326c2e47e6dd2e7f6b5b0f7c5ac2f24"],
         ExclusionMethod.REDISTRIBUTE_SHARE,
@@ -269,7 +255,7 @@ def disperse_yearn_community_epoch_3():
 
 def disperse_strategist_2():
     disperse(
-        CoordinapeGroup.YSTRATEGIST, 2, "brain.ychad.eth", FundingMethod.TRANSFER_YVYFI
+        CoordinapeGroup.YSTRATEGIST, 2, BRAIN_YCHAD_ETH, FundingMethod.TRANSFER_YVYFI
     )
 
 
