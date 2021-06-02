@@ -7,9 +7,9 @@ from brownie import *
 import math
 from tabulate import tabulate
 from pytest import approx
-from constants import *
-from configuration import *
-from coordinape_enums import CoordinapeGroup, ExclusionMethod, FundingMethod
+from scripts.constants import *
+from scripts.configuration import *
+from scripts.coordinape_enums import CoordinapeGroup, ExclusionMethod, FundingMethod
 
 
 def contributors_from_epoch(group, epoch):
@@ -260,7 +260,7 @@ def disperse_strategist_2():
 
 def disperse_strategist_3():
     disperse(
-        CoordinapeGroup.YSTRATEGIST, 2, BRAIN_YCHAD_ETH, FundingMethod.TRANSFER_YVYFI
+        CoordinapeGroup.YSTRATEGIST, 3, BRAIN_YCHAD_ETH, FundingMethod.TRANSFER_YVYFI
     )
 
 
