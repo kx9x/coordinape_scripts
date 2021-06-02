@@ -19,3 +19,4 @@ class FundingMethod(Enum):
     DEPOSIT_YFI = 1
     TRANSFER_YVYFI = 2
     TRANSFER_YVYFI_FROM_TREASURY = 3
+    MARKET_BUY = 4
