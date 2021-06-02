@@ -8,8 +8,6 @@ class CoordinapeGroup(Enum):
     COORDINAPETESTING = 5
     CREAM = 6
     GITCOIN = 7
-    BERKSHIRE_HATHAWAY = 8
-    WUFFY = 9
 
 
 class ExclusionMethod(Enum):
