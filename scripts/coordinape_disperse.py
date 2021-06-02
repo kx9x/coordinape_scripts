@@ -1,3 +1,6 @@
+import sys
+import pathlib
+sys.path.append(str(pathlib.Path(__file__).parent.parent.absolute()))
 import csv
 import io
 import requests
@@ -110,16 +113,38 @@ def disperse(
         total_votes += int(contributor["received"])
 
     safe = ApeSafe(safe)
-    yfi = safe.contract(YFI_ADDRESS)
-    yfi_usd_oracle = safe.contract(YFI_USD_ORACLE_ADDRESS)
 
-    # Use price oracle to find how much YFI to allocate
+    yfi = safe.contract(YFI_ADDRESS)
     yfi_decimal_multiplicand = 10 ** yfi.decimals()
-    yfi_in_usd = yfi_usd_oracle.latestAnswer() / 10 ** yfi_usd_oracle.decimals()
-    yfi_allocated = (reward_in_usd / yfi_in_usd) * yfi_decimal_multiplicand
+
 
     yvyfi = safe.contract(YEARN_VAULT_YFI_ADDRESS)
     disperse = safe.contract(DISPERSE_APP_ADDRESS)
+
+    if funding_method == FundingMethod.MARKET_BUY:
+        sushiswap = safe.contract(SUSHISWAP_ADDRESS)
+        usdc = safe.contract(USDC_ADDRESS)
+        weth = safe.contract(WETH_ADDRESS)
+        usdc_to_swap = reward_in_usd * 10 ** usdc.decimals()
+        usdc_balance = usdc.balanceOf(safe.account)
+        if usdc_balance < usdc_to_swap:
+            usdc_need = usdc_to_swap - usdc_balance
+            treasury = safe.contract(YEARN_TREASURY_ADDRESS)
+            assert treasury.governance() == safe.account
+            assert usdc.balanceOf(treasury) >= usdc_need
+            treasury.toGovernance(usdc, usdc_need)
+
+        usdc.approve(sushiswap, usdc_to_swap)
+        yfi_before = yfi.balanceOf(safe.account)
+        sushiswap.swapExactTokensForTokens(usdc_to_swap, 0, [usdc, weth, yfi], safe.account, 2**256-1)
+        yfi_allocated = yfi.balanceOf(safe.account) - yfi_before
+        yfi_in_usd = reward_in_usd / (yfi_allocated / yfi_decimal_multiplicand)
+        funding_method = FundingMethod.DEPOSIT_YFI
+    else:
+        # Use price oracle to find how much YFI to allocate
+        yfi_usd_oracle = safe.contract(YFI_USD_ORACLE_ADDRESS)
+        yfi_in_usd = yfi_usd_oracle.latestAnswer() / 10 ** yfi_usd_oracle.decimals()
+        yfi_allocated = (reward_in_usd / yfi_in_usd) * yfi_decimal_multiplicand
 
     yvyfi_before = yvyfi.balanceOf(safe.account)
     yfi_before = yfi.balanceOf(safe.account)
@@ -190,9 +215,9 @@ def disperse(
         amounts[i] += 1
 
     assert sum(amounts) == yvyfi_to_disperse
-    assert yfi_allocated == approx(
+    assert float(yfi_allocated) == approx(
         yvyfi_to_disperse * (yvyfi.totalAssets() / yvyfi.totalSupply()),
-        Wei("0.001 ether"),
+        Wei("0.000001 ether") / yfi_decimal_multiplicand,
     )
 
     yvyfi.approve(disperse, sum(amounts))
@@ -253,10 +278,20 @@ def disperse_yearn_community_epoch_3():
     )
 
 
+def disperse_yearn_community_epoch_4():
+    disperse(
+        CoordinapeGroup.COMMUNITY,
+        4,
+        YCHAD_ETH,
+        FundingMethod.MARKET_BUY,
+    )
+
+
 def disperse_strategist_2():
     disperse(
         CoordinapeGroup.YSTRATEGIST, 2, BRAIN_YCHAD_ETH, FundingMethod.TRANSFER_YVYFI
     )
+
 
 def disperse_strategist_3():
     disperse(
@@ -266,4 +301,4 @@ def disperse_strategist_3():
 
 if __name__ == "__main__":
     network.connect("mainnet-fork")
-    disperse_strategist_3()
+    disperse_yearn_community_epoch_4()
