@@ -161,9 +161,15 @@ def disperse(
             yvyfi.balanceOf(safe.account) - yvyfi_to_disperse
         ) / yvyfi_to_disperse
 
-        assert (
-            percentage_yvyfi_buffer > 0.01
-        ), f"This TX could fail if yvYFI's pricePerShare changes before execution.\nThe yvyfi buffer is only {percentage_yvyfi_buffer}%\n"
+        within_buffer = percentage_yvyfi_buffer >= EXPECTED_YVYFI_BUFFER
+        if safe.account == treasury.governance() and not within_buffer:
+            yvyfi_buffer_needed = Wei(Fraction(EXPECTED_YVYFI_BUFFER - percentage_yvyfi_buffer) * yvyfi_to_disperse)
+            assert yvyfi.balanceOf(treasury) >= yvyfi_buffer_needed
+            treasury.toGovernance(yvyfi, yvyfi_buffer_needed)
+        else:
+            assert (
+                within_buffer
+            ), f"This TX could fail if yvYFI's pricePerShare changes before execution.\nThe yvyfi buffer is only {percentage_yvyfi_buffer}%\n"
     elif funding_method == FundingMethod.TRANSFER_YVYFI_FROM_TREASURY:
         treasury = safe.contract(YEARN_TREASURY_ADDRESS)
         assert treasury.governance() == safe.account
@@ -229,7 +235,7 @@ def disperse(
 
     if funding_method == FundingMethod.DEPOSIT_YFI:
         # Make sure we sent all the new yvYFI and only used as much YFI as expected
-        assert yvyfi_before == yvyfi.balanceOf(safe.account)
+        assert abs(yvyfi.balanceOf(safe.account) - yvyfi_before) <= EXPECTED_YVYFI_BUFFER * yfi_allocated
         assert yfi_before - yfi_allocated == yfi.balanceOf(safe.account)
     elif funding_method == FundingMethod.TRANSFER_YVYFI:
         # Make sure we didn't use YFI for some reason and only used as much yvYFI as expected
