@@ -106,7 +106,7 @@ def disperse(
 
     assert (
         len(rewarded_contributors_this_epoch) > 0
-    ), "{group.name}'s epoch #{epoch} does not have any contributors with votes received..."
+    ), f"{group.name}'s epoch #{epoch} does not have any contributors with votes received..."
 
     total_votes = 0
     for contributor in rewarded_contributors_this_epoch:
