@@ -129,7 +129,6 @@ def disperse(
         usdc_balance = usdc.balanceOf(safe.account)
         if usdc_balance < usdc_to_swap:
             usdc_need = usdc_to_swap - usdc_balance
-            treasury = safe.contract(YEARN_TREASURY_ADDRESS)
             assert treasury.governance() == safe.account
             assert usdc.balanceOf(treasury) >= usdc_need
             treasury.toGovernance(usdc, usdc_need)
