@@ -120,6 +120,7 @@ def disperse(
 
     yvyfi = safe.contract(YEARN_VAULT_YFI_ADDRESS)
     disperse = safe.contract(DISPERSE_APP_ADDRESS)
+    treasury = safe.contract(YEARN_TREASURY_ADDRESS)
 
     if funding_method == FundingMethod.MARKET_BUY:
         sushiswap = safe.contract(SUSHISWAP_ADDRESS)
@@ -129,7 +130,6 @@ def disperse(
         usdc_balance = usdc.balanceOf(safe.account)
         if usdc_balance < usdc_to_swap:
             usdc_need = usdc_to_swap - usdc_balance
-            treasury = safe.contract(YEARN_TREASURY_ADDRESS)
             assert treasury.governance() == safe.account
             assert usdc.balanceOf(treasury) >= usdc_need
             treasury.toGovernance(usdc, usdc_need)
@@ -289,7 +289,7 @@ def disperse_yearn_community_epoch_4():
         CoordinapeGroup.COMMUNITY,
         4,
         YCHAD_ETH,
-        FundingMethod.MARKET_BUY,
+        FundingMethod.DEPOSIT_YFI,
     )
 
 
