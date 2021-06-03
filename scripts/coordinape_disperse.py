@@ -169,24 +169,21 @@ def disperse(
         treasury_yvyfi_before = yvyfi.balanceOf(treasury)
         treasury.toGovernance(yvyfi, yvyfi_to_disperse)
 
-    if (
-        funding_method == FundingMethod.TRANSFER_YVYFI
-        or funding_method == FundingMethod.TRANSFER_YVYFI_FROM_TREASURY
-    ):
-        percentage_yvyfi_buffer = (
-            yvyfi.balanceOf(safe.account) - yvyfi_to_disperse
-        ) / yvyfi_to_disperse
+    percentage_yvyfi_buffer = (
+        yvyfi.balanceOf(safe.account) - yvyfi_to_disperse
+    ) / yvyfi_to_disperse
 
-        within_buffer = percentage_yvyfi_buffer >= EXPECTED_YVYFI_BUFFER
-        if safe.account == treasury.governance() and not within_buffer:
-            yvyfi_buffer_needed = Wei(Fraction(EXPECTED_YVYFI_BUFFER - percentage_yvyfi_buffer) * yvyfi_to_disperse)
-            assert yvyfi.balanceOf(treasury) >= yvyfi_buffer_needed
-            treasury.toGovernance(yvyfi, yvyfi_buffer_needed)
-            treasury_yvyfi_before -= yvyfi_buffer_needed
-        else:
-            assert (
-                within_buffer
-            ), f"This TX could fail if yvYFI's pricePerShare changes before execution.\nThe yvyfi buffer is only {percentage_yvyfi_buffer}%\n"
+    within_buffer = percentage_yvyfi_buffer >= EXPECTED_YVYFI_BUFFER
+    yvyfi_buffer_needed = 0
+    if safe.account == treasury.governance() and not within_buffer:
+        yvyfi_buffer_needed = Wei(Fraction(EXPECTED_YVYFI_BUFFER - percentage_yvyfi_buffer) * yvyfi_to_disperse)
+        assert yvyfi.balanceOf(treasury) >= yvyfi_buffer_needed
+        treasury.toGovernance(yvyfi, yvyfi_buffer_needed)
+        treasury_yvyfi_before -= yvyfi_buffer_needed
+    else:
+        assert (
+            within_buffer
+        ), f"This TX could fail if yvYFI's pricePerShare changes before execution.\nThe yvyfi buffer is only {percentage_yvyfi_buffer}%\n"
 
     # Converting here will leave some dust
     amounts = [
@@ -249,7 +246,7 @@ def disperse(
     elif funding_method == FundingMethod.TRANSFER_YVYFI_FROM_TREASURY:
         # Make sure we didn't use YFI and only used the yvYFI from the treasury
         assert yfi_before == yfi.balanceOf(safe.account)
-        assert yvyfi_before + yvyfi_removed_by_exclusion == yvyfi.balanceOf(
+        assert yvyfi_before + yvyfi_removed_by_exclusion + yvyfi_buffer_needed == yvyfi.balanceOf(
             safe.account
         )
         assert treasury_yvyfi_before - (
