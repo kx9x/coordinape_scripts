@@ -119,6 +119,7 @@ def disperse(
 
     yvyfi = safe.contract(YEARN_VAULT_YFI_ADDRESS)
     disperse = safe.contract(DISPERSE_APP_ADDRESS)
+    treasury = safe.contract(YEARN_TREASURY_ADDRESS)
 
     if funding_method == FundingMethod.MARKET_BUY:
         sushiswap = safe.contract(SUSHISWAP_ADDRESS)
@@ -146,6 +147,7 @@ def disperse(
         yfi_allocated = (reward_in_usd / yfi_in_usd) * yfi_decimal_multiplicand
 
     yvyfi_before = yvyfi.balanceOf(safe.account)
+    treasury_yvyfi_before = yvyfi.balanceOf(treasury)
     yfi_before = yfi.balanceOf(safe.account)
     yvyfi_to_disperse = Wei((yfi_allocated * yvyfi.totalSupply()) / yvyfi.totalAssets())
 
@@ -166,9 +168,9 @@ def disperse(
         treasury = safe.contract(YEARN_TREASURY_ADDRESS)
         assert treasury.governance() == safe.account
         assert yvyfi.balanceOf(treasury) >= yvyfi_to_disperse
-        treasury_yvyfi_before = yvyfi.balanceOf(treasury)
         treasury.toGovernance(yvyfi, yvyfi_to_disperse)
 
+    # Make sure we have a buffer of yvyfi to avoid some errors
     percentage_yvyfi_buffer = (
         yvyfi.balanceOf(safe.account) - yvyfi_to_disperse
     ) / yvyfi_to_disperse
@@ -291,7 +293,7 @@ def disperse_yearn_community_epoch_4():
         CoordinapeGroup.COMMUNITY,
         4,
         YCHAD_ETH,
-        FundingMethod.TRANSFER_YVYFI_FROM_TREASURY,
+        FundingMethod.DEPOSIT_YFI,
     )
 
 
