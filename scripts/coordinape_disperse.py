@@ -44,7 +44,7 @@ def get_rewarded_contributors_this_epoch(contributors_this_epoch, exclusion_list
             for contributor in rewarded_contributors_this_epoch
             if contributor["address"] not in exclusion_list
         ]
-    
+
     return rewarded_contributors_this_epoch
 
 
@@ -163,6 +163,11 @@ def disperse(
         yfi.approve(yvyfi, yfi_allocated)
         yvyfi.deposit(yfi_allocated)
         yvyfi_to_disperse = Wei(yvyfi.balanceOf(safe.account) - yvyfi_before)
+    elif funding_method == FundingMethod.DEPOSIT_ALL_YFI_TO_YVYFI:
+        yfi_balance = yfi.balanceOf(safe.account)
+        yfi.approve(yvyfi, yfi_balance)
+        yvyfi.deposit(yfi_balance)
+        assert yvyfi_to_disperse <= yvyfi.balanceOf(safe.account)
     elif funding_method == FundingMethod.TRANSFER_YVYFI_FROM_TREASURY:
         treasury = safe.contract(YEARN_TREASURY_ADDRESS)
         assert treasury.governance() == safe.account
@@ -314,6 +319,9 @@ def disperse_strategist_3():
     disperse(
         CoordinapeGroup.YSTRATEGIST, 3, BRAIN_YCHAD_ETH, FundingMethod.TRANSFER_YVYFI
     )
+
+def disperse_strategist_4():
+    disperse(CoordinapeGroup.YSTRATEGIST, 4, BRAIN_YCHAD_ETH, FundingMethod.DEPOSIT_ALL_YFI_TO_YVYFI)
 
 
 if __name__ == "__main__":
