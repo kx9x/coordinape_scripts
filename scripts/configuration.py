@@ -5,6 +5,6 @@ from scripts.coordinape_enums import CoordinapeGroup
 
 LEFTOVER_DICT = {CoordinapeGroup.COMMUNITY: {2: 6902}}
 DEFAULT_USD_REWARD_DICT = {
-    CoordinapeGroup.COMMUNITY: {1: 40000, 2: 40000, 3: 40000, 4: 60000},
+    CoordinapeGroup.COMMUNITY: {1: 40000, 2: 40000, 3: 40000, 4: 60000, 5: 60000},
     CoordinapeGroup.YSTRATEGIST: {1: 40000, 2: 40000, 3: 40000},
 }
