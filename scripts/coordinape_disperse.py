@@ -74,7 +74,7 @@ def disperse(
     disbursement = Disbursement(reward_in_usd, funding_method, contracts, EXPECTED_YVYFI_BUFFER)
     disbursement.prep_reward()
 
-    amounts, yvyfi_removed_by_exclusion = disbursement.get_amounts(coordinape_group_epoch)
+    amounts = disbursement.get_amounts(coordinape_group_epoch)
 
     contracts.yvyfi.approve(contracts.disperse, sum(amounts))
     recipients = [contributor["address"] for contributor in rewarded_contributors_this_epoch]
@@ -83,7 +83,7 @@ def disperse(
     contracts.disperse.disperseToken(contracts.yvyfi, recipients, amounts)
     history[-1].info()
 
-    disbursement.check_asserts(yvyfi_removed_by_exclusion)
+    disbursement.check_asserts()
 
     # For each recipient, make sure their yvYFI amount increased by the expected amount
     for recipient, yvyfi_before, amount in zip(
