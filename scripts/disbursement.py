@@ -27,11 +27,11 @@ class Disbursement:
 
 
     def needs_yvyfi(self):
-        return (self.yvyfi_before - self.yvyfi_to_disperse) / self.yvyfi_before < EXPECTED_YVYFI_BUFFER
+        return self.yvyfi_before / self.yvyfi_to_disperse < EXPECTED_YVYFI_BUFFER
 
 
     def needs_yfi(self):
-        return (self.yfi_before - self.yfi_allocated) / self.yfi_before < EXPECTED_YVYFI_BUFFER
+        return self.yfi_before / self.yfi_allocated < EXPECTED_YVYFI_BUFFER
 
 
     # After this, treasury should have enough yvYFI
@@ -91,7 +91,7 @@ class Disbursement:
         assert self.contracts.treasury.governance() == self.contracts.safe.account
         self.yvyfi_to_transfer = self.yvyfi_to_disperse
         if self.needs_yvyfi():
-            self.yvyfi_to_transfer +=self. yvyfi_to_transfer * EXPECTED_YVYFI_BUFFER
+            self.yvyfi_to_transfer += self.yvyfi_to_transfer * EXPECTED_YVYFI_BUFFER
         assert self.contracts.yvyfi.balanceOf(self.contracts.treasury) >= self.yvyfi_to_transfer
         self.contracts.treasury.toGovernance(self.contracts.yvyfi, self.yvyfi_to_transfer)
 
@@ -134,11 +134,11 @@ class Disbursement:
         elif self.funding_method == FundingMethod.TRANSFER_YVYFI_FROM_TREASURY:
             # Make sure we didn't use YFI and only used the yvYFI from the treasury
             assert self.yfi_before == self.contracts.yfi.balanceOf(self.contracts.safe.account)
-            assert self.yvyfi_before + self.yvyfi_removed_by_exclusion == self.contracts.yvyfi.balanceOf(
+            assert self.yvyfi_before == self.contracts.yvyfi.balanceOf(
                 self.contracts.safe.account
             )
             assert self.treasury_yvyfi_before - (
-                self.yvyfi_to_disperse + self.yvyfi_removed_by_exclusion
+                self.yvyfi_to_disperse
             ) == self.contracts.yvyfi.balanceOf(self.contracts.treasury)
     
     def get_amounts(self, coordinape_group_epoch):
