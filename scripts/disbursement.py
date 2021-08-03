@@ -27,11 +27,11 @@ class Disbursement:
 
 
     def needs_yvyfi(self):
-        return self.yvyfi_before / self.yvyfi_to_disperse < EXPECTED_YVYFI_BUFFER
+        return (self.yvyfi_before - self.yvyfi_to_disperse) / self.yvyfi_before < EXPECTED_YVYFI_BUFFER
 
 
     def needs_yfi(self):
-        return self.yfi_before / self.yfi_allocated < EXPECTED_YVYFI_BUFFER
+        return (self.yfi_before - self.yfi_allocated) / self.yfi_before < EXPECTED_YVYFI_BUFFER
 
 
     # After this, treasury should have enough yvYFI
