@@ -63,7 +63,7 @@ class Disbursement:
             yfi_to_transfer += self.yfi_allocated * EXPECTED_YVYFI_BUFFER * self.yvyfi_ratio
 
         assert self.contracts.yfi.balanceOf(self.contracts.treasury) >= yfi_to_transfer
-        self.contract.treasury.toGovernance(self.contracts.yfi, yfi_to_transfer)
+        self.contracts.treasury.toGovernance(self.contracts.yfi, yfi_to_transfer)
         self.yfi_before = self.contracts.yfi.balanceOf(self.contracts.safe.account)
         self.deposit_yfi()
 
