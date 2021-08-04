@@ -1,5 +1,6 @@
 import sys
 import pathlib
+import csv
 sys.path.append(str(pathlib.Path(__file__).parent.parent.absolute()))
 from brownie import *
 from tabulate import tabulate
@@ -36,6 +37,10 @@ def make_table(contributors_this_epoch, amounts, yfi_decimal_multiplicand, yfi_i
             ),
         ]
     )
+
+    with open('output.csv', 'w+') as result_file:
+        wr = csv.writer(result_file, dialect='excel')
+        wr.writerows(l)
 
     table = tabulate(
         l,
