@@ -126,10 +126,20 @@ def disperse_yearn_community_epoch_4():
         FundingMethod.DEPOSIT_YFI,
     )
 
+
 def disperse_yearn_community_epoch_5():
     disperse(
         CoordinapeGroup.COMMUNITY,
         5,
+        YCHAD_ETH,
+        FundingMethod.DEPOSIT_YFI,
+    )
+
+
+def disperse_yearn_community_epoch_6():
+    disperse(
+        CoordinapeGroup.COMMUNITY,
+        6,
         YCHAD_ETH,
         FundingMethod.DEPOSIT_YFI,
     )
@@ -157,4 +167,4 @@ def disperse_strategist_5():
 
 if __name__ == "__main__":
     network.connect("mainnet-fork")
-    disperse_strategist_5()
+    disperse_yearn_community_epoch_6()
