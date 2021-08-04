@@ -161,6 +161,10 @@ def disperse_strategist_4():
     disperse(CoordinapeGroup.YSTRATEGIST, 4, BRAIN_YCHAD_ETH, FundingMethod.DEPOSIT_ALL_YFI_TO_YVYFI)
 
 
+def disperse_strategist_5():
+    disperse(CoordinapeGroup.YSTRATEGIST, 5, BRAIN_YCHAD_ETH, FundingMethod.TRANSFER_YVYFI)
+
+
 if __name__ == "__main__":
     network.connect("mainnet-fork")
     disperse_yearn_community_epoch_6()
