@@ -152,7 +152,7 @@ def disperse_strategist_4():
 
 
 def disperse_strategist_5():
-    disperse(CoordinapeGroup.YSTRATEGIST, , BRAIN_YCHAD_ETH, FundingMethod.TRANSFER_YVYFI)
+    disperse(CoordinapeGroup.YSTRATEGIST, 5, BRAIN_YCHAD_ETH, FundingMethod.TRANSFER_YVYFI)
 
 
 if __name__ == "__main__":
