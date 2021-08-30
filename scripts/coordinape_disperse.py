@@ -12,7 +12,7 @@ from scripts.contracts import Contracts
 from scripts.disbursement import Disbursement
 
 
-def make_table(contributors_this_epoch, amounts, yfi_decimal_multiplicand, yfi_in_usd, price_per_share, total_votes):
+def make_table(coordinape_group_epoch, contributors_this_epoch, amounts, yfi_decimal_multiplicand, yfi_in_usd, price_per_share, total_votes):
     l = [
         [
             contributor["name"],
@@ -38,7 +38,7 @@ def make_table(contributors_this_epoch, amounts, yfi_decimal_multiplicand, yfi_i
         ]
     )
 
-    with open('output.csv', 'w+') as result_file:
+    with open(f'output_{coordinape_group_epoch.group}_{coordinape_group_epoch.epoch}.csv', 'w+') as result_file:
         wr = csv.writer(result_file, dialect='excel')
         wr.writerows(l)
 
@@ -98,7 +98,7 @@ def disperse(
 
     # Print out a table
     price_per_share = contracts.yvyfi.pricePerShare() / contracts.yfi_decimal_multiplicand
-    table = make_table(rewarded_contributors_this_epoch, amounts, contracts.yfi_decimal_multiplicand, disbursement.yfi_in_usd, price_per_share, coordinape_group_epoch.get_total_votes())
+    table = make_table(coordinape_group_epoch, rewarded_contributors_this_epoch, amounts, contracts.yfi_decimal_multiplicand, disbursement.yfi_in_usd, price_per_share, coordinape_group_epoch.get_total_votes())
 
     print(
         f"{group.name} epoch #{epoch}\nDistributing ${reward_in_usd}\nYFI price ${disbursement.yfi_in_usd}\nyvYFI price per share {price_per_share}\n"
