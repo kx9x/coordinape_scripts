@@ -176,11 +176,11 @@ def disperse_strategist_4():
 
 
 def disperse_strategist_5():
-    disperse(CoordinapeGroup.YSTRATEGIST, 6, BRAIN_YCHAD_ETH, FundingMethod.TRANSFER_YVYFI)
+    disperse(CoordinapeGroup.YSTRATEGIST, 5, BRAIN_YCHAD_ETH, FundingMethod.TRANSFER_YVYFI)
 
 
 def disperse_strategist_6():
-    disperse(CoordinapeGroup.YSTRATEGIST, 5, BRAIN_YCHAD_ETH, FundingMethod.TRANSFER_YVYFI)
+    disperse(CoordinapeGroup.YSTRATEGIST, 6, BRAIN_YCHAD_ETH, FundingMethod.TRANSFER_YVYFI)
 
 if __name__ == "__main__":
     network.connect("mainnet-fork")
