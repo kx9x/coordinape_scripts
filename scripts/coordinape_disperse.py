@@ -168,7 +168,7 @@ def disperse_yearn_community_epoch_8():
     )
 
 
-def disperse_yearn_community_epoch_8():
+def disperse_yearn_community_epoch_9():
     disperse(
         CoordinapeGroup.COMMUNITY,
         9,
@@ -213,4 +213,4 @@ def disperse_strategist_8():
 
 if __name__ == "__main__":
     network.connect("mainnet-fork")
-    disperse_yearn_community_epoch_6()
+    disperse_yearn_community_epoch_9()
