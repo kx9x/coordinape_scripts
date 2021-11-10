@@ -50,8 +50,7 @@ def make_table(coordinape_group_epoch, contributors_this_epoch, amounts, yfi_dec
 
     return table
 
-
-def disperse(
+def disperseOneEpoch(
     group,
     epoch,
     safe_name=YCHAD_ETH,
@@ -76,29 +75,90 @@ def disperse(
     ), f"{group.name}'s epoch #{epoch} does not have any contributors with votes received..."
 
     contracts = Contracts(safe_name)
-    disbursement = Disbursement(reward_in_usd, funding_method, contracts, EXPECTED_YVYFI_BUFFER)
+    disbursement = Disbursement(reward_in_usd, funding_method, contracts, EXPECTED_TOKEN_BUFFER)
     disbursement.prep_reward()
 
     amounts = disbursement.get_amounts(coordinape_group_epoch)
+    return (amounts, disbursement, coordinape_group_epoch)
 
-    contracts.yvyfi.approve(contracts.disperse, sum(amounts))
+
+def disperse(
+    group,
+    epoch,
+    safe_name=YCHAD_ETH,
+    funding_method=FundingMethod.DEPOSIT_YFI,
+    exclusion_list=[],
+    exclusion_type=ExclusionMethod.REDISTRIBUTE_SHARE,
+):
+    contracts = Contracts(safe_name)
+    if isinstance(epoch, int):
+        amounts, disbursement, coordinape_group_epoch = disperseOneEpoch(group, epoch, safe_name, funding_method, exclusion_list, exclusion_type)
+        reward_in_usd = disbursement.reward_in_usd
+        rewarded_contributors_this_epoch = coordinape_group_epoch.get_rewarded_contributors_this_epoch()
+        total_votes = coordinape_group_epoch.get_total_votes()
+    else:
+        reward_in_usd = 0
+        rewarded_contributors_this_epoch = []
+        coordinape_group_epoch = None
+        address_to_amounts = {}
+        total_votes = 0
+        for e in epoch:
+            amounts, disbursement, coordinape_group_epoch_i = disperseOneEpoch(group, e, safe_name, funding_method, exclusion_list, exclusion_type)
+            rewarded_this_epoch = coordinape_group_epoch_i.get_rewarded_contributors_this_epoch()
+            for i in range(len(amounts)):
+                addr = rewarded_this_epoch[i]['address']
+                if addr in address_to_amounts.keys():
+                    address_to_amounts[addr] += amounts[i]
+                else:
+                    address_to_amounts[addr] = amounts[i]
+
+            reward_in_usd += disbursement.reward_in_usd
+            if not coordinape_group_epoch:
+                coordinape_group_epoch = coordinape_group_epoch_i
+
+            for rewarded_contributor in rewarded_this_epoch:
+                total_votes += int(rewarded_contributor['received'])
+                addresses = list(map(lambda x: x['address'], rewarded_contributors_this_epoch))
+                if rewarded_contributor['address'] not in addresses:
+                    rewarded_contributors_this_epoch.append(rewarded_contributor)
+                else:
+                    index = addresses.index(rewarded_contributor['address'])
+                    rewarded_contributors_this_epoch[index]['received'] += ", " + rewarded_contributor['received']
+
+        amounts = []
+        for contributor in rewarded_contributors_this_epoch:
+            addr = contributor["address"]
+            amounts.append(address_to_amounts[addr])
+            received_votes = list(map(int, contributor["received"].split(', ')))
+            contributor["received"] +=  " (total: " + str(sum(received_votes)) + ")"
+
+    if funding_method == FundingMethod.SEND_YFI:
+        token = contracts.yfi
+    else:
+        token = contracts.yvyfi
+
+    token.approve(contracts.disperse, sum(amounts))
     recipients = [contributor["address"] for contributor in rewarded_contributors_this_epoch]
-    recipients_yvfi_before = [contracts.yvyfi.balanceOf(recipient) for recipient in recipients]
+    recipients_balance_before = [token.balanceOf(recipient) for recipient in recipients]
 
-    contracts.disperse.disperseToken(contracts.yvyfi, recipients, amounts)
+    contracts.disperse.disperseToken(token, recipients, amounts)
     history[-1].info()
 
     disbursement.check_asserts()
 
     # For each recipient, make sure their yvYFI amount increased by the expected amount
-    for recipient, yvyfi_before, amount in zip(
-        recipients, recipients_yvfi_before, amounts
+    for recipient, balance_before, amount in zip(
+        recipients, recipients_balance_before, amounts
     ):
-        assert contracts.yvyfi.balanceOf(recipient) == yvyfi_before + amount
+        assert token.balanceOf(recipient) == balance_before + amount
 
     # Print out a table
-    price_per_share = contracts.yvyfi.pricePerShare() / contracts.yfi_decimal_multiplicand
-    table = make_table(coordinape_group_epoch, rewarded_contributors_this_epoch, amounts, contracts.yfi_decimal_multiplicand, disbursement.yfi_in_usd, price_per_share, coordinape_group_epoch.get_total_votes())
+    if funding_method != FundingMethod.SEND_YFI:
+        price_per_share = token.pricePerShare() / contracts.yfi_decimal_multiplicand
+    else:
+        price_per_share = 1
+
+    table = make_table(coordinape_group_epoch, rewarded_contributors_this_epoch, amounts, contracts.yfi_decimal_multiplicand, disbursement.yfi_in_usd, price_per_share, total_votes)
 
     print(
         f"{group.name} epoch #{epoch}\nDistributing ${reward_in_usd}\nYFI price ${disbursement.yfi_in_usd}\nyvYFI price per share {price_per_share}\n"
@@ -211,6 +271,9 @@ def disperse_strategist_8():
     disperse(CoordinapeGroup.YSTRATEGIST, 8, BRAIN_YCHAD_ETH, FundingMethod.TRANSFER_YVYFI)
 
 
+def disperse_yacademy_1_through_4():
+    disperse(CoordinapeGroup.YACADEMY, [1,2,3,4], YCHAD_ETH, FundingMethod.SEND_YFI)
+
 if __name__ == "__main__":
-    network.connect("mainnet-fork")
-    disperse_yearn_community_epoch_9()
+    network.connect("eth-main-fork")
+    disperse_yacademy_1_through_4()

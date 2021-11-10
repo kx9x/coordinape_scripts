@@ -8,6 +8,7 @@ class CoordinapeGroup(Enum):
     COORDINAPETESTING = 5
     CREAM = 6
     GITCOIN = 7
+    YACADEMY = 60
 
 
 class ExclusionMethod(Enum):
@@ -22,3 +23,4 @@ class FundingMethod(Enum):
     MARKET_BUY = 4
     TRANSFER_YFI_FROM_TREASURY = 5
     DEPOSIT_ALL_YFI_TO_YVYFI = 6
+    SEND_YFI = 7
